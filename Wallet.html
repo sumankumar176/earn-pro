@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>Earn Pro - वॉलेट</title>
+  <script type="module" src="./firebase.js"></script>
+  <script type="module">
+    import { auth, db } from "./firebase.js";
+    import {
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      doc, getDoc, updateDoc, collection, addDoc, getDocs, query, where
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const balanceEl = document.getElementById("balance");
+    const historyEl = document.getElementById("history");
+    const uidInput = document.getElementById("upi-id");
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return window.location.href = "index.html";
+      currentUser = user;
+
+      // Get Balance
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (!userDoc.exists()) {
+        await updateDoc(doc(db, "users", user.uid), { balance: 0 });
+        balanceEl.innerText = "₹0";
+      } else {
+        const data = userDoc.data();
+        balanceEl.innerText = "₹" + (data.balance || 0);
+      }
+
+      // Withdrawal History
+      const q = query(collection(db, "withdrawals"), where("uid", "==", user.uid));
+      const snap = await getDocs(q);
+      snap.forEach(doc => {
+        const d = doc.data();
+        const li = document.createElement("li");
+        li.innerText = `₹${d.amount} - ${d.upi} - ${d.status}`;
+        historyEl.appendChild(li);
+      });
+    });
+
+    window.sendWithdrawRequest = async () => {
+      const amount = parseInt(document.getElementById("amount").value);
+      const upi = uidInput.value;
+
+      if (amount < 30) return alert("न्यूनतम ₹30 की आवश्यकता है।");
+      if (!upi) return alert("कृपया UPI ID दर्ज करें।");
+
+      const userRef = doc(db, "users", currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      const balance = userSnap.data().balance || 0;
+
+      if (balance < amount) return alert("पर्याप्त बैलेंस नहीं है।");
+
+      // Save request
+      await addDoc(collection(db, "withdrawals"), {
+        uid: currentUser.uid,
+        amount,
+        upi,
+        status: "Pending",
+        timestamp: Date.now()
+      });
+
+      // Deduct from balance
+      await updateDoc(userRef, {
+        balance: balance - amount
+      });
+
+      alert("विड्रॉल अनुरोध भेज दिया गया है।");
+      window.location.reload();
+    };
+  </script>
+
+  <style>
+    body { font-family: Arial; text-align: center; padding: 20px; background: #f3f3f3; }
+    input, button { padding: 10px; margin: 5px; width: 80%; max-width: 300px; }
+    ul { list-style: none; padding: 0; }
+    .back-btn { position: fixed; top: 10px; left: 10px; background: #444; color: #fff; padding: 5px 10px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <button class="back-btn" onclick="history.back()">← पीछे जाएं</button>
+  <h2>मेरा वॉलेट</h2>
+  <h3>बैलेंस: <span id="balance">लोड हो रहा है...</span></h3>
+
+  <h3>विड्रॉल फॉर्म</h3>
+  <input type="number" id="amount" placeholder="राशि (₹)" /><br>
+  <input type="text" id="upi-id" placeholder="UPI ID (जैसे: xyz@upi)" /><br>
+  <button onclick="sendWithdrawRequest()">विड्रॉल भेजें</button>
+
+  <h3>विड्रॉल इतिहास</h3>
+  <ul id="history"></ul>
+</body>
+</html>

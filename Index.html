@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>Earn Pro - लॉगिन / रजिस्टर</title>
+  <script type="module" src="./firebase.js"></script>
+  <script type="module">
+    import { auth } from "./firebase.js";
+    import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    window.registerUser = async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        alert("रजिस्ट्रेशन सफल! अब लॉगिन करें।");
+      } catch (error) {
+        alert("रजिस्ट्रेशन असफल: " + error.message);
+      }
+    };
+
+    window.loginUser = async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = "home.html";
+      } catch (error) {
+        alert("लॉगिन असफल: " + error.message);
+      }
+    };
+  </script>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 40px; background: #f5f5f5; }
+    input, button { padding: 10px; margin: 10px; width: 80%; max-width: 300px; }
+    h2 { margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <h2>Earn Pro में आपका स्वागत है</h2>
+  <input type="email" id="email" placeholder="ईमेल डालें"><br>
+  <input type="password" id="password" placeholder="पासवर्ड"><br>
+  <button onclick="registerUser()">रजिस्टर करें</button><br>
+  <button onclick="loginUser()">लॉगिन करें</button>
+</body>
+</html>
